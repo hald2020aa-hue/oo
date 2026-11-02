@@ -202,7 +202,11 @@ object HomeScreen : Screen() {
             label = "neonTabHaloAlpha",
         )
         val iconTint by animateColorAsState(
-            targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            targetValue = if (selected) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             animationSpec = tween(durationMillis = durationMillis),
             label = "neonTabIconTint",
         )
