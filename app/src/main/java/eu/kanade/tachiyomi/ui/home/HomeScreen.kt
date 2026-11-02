@@ -1,9 +1,17 @@
 package eu.kanade.tachiyomi.ui.home
 
+import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -19,9 +27,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +45,7 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
+import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.history.HistoryTab
@@ -58,7 +71,7 @@ object HomeScreen : Screen() {
     private val showBottomNavEvent = Channel<Boolean>()
 
     @Suppress("ConstPropertyName")
-    private const val TabFadeDuration = 200
+    private const val TabFadeDuration = 220
 
     @Suppress("ConstPropertyName")
     private const val TabNavigatorKey = "HomeTabs"
@@ -74,6 +87,7 @@ object HomeScreen : Screen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val animationsEnabled = remember { ValueAnimator.areAnimatorsEnabled() }
         TabNavigator(
             tab = LibraryTab,
             key = TabNavigatorKey,
@@ -114,9 +128,9 @@ object HomeScreen : Screen() {
                         targetState = tabNavigator.current,
                         transitionSpec = {
                             materialFadeThroughIn(
-                                initialScale = 1f,
-                                durationMillis = TabFadeDuration,
-                            ) togetherWith materialFadeThroughOut(durationMillis = TabFadeDuration)
+                                initialScale = 0.97f,
+                                durationMillis = if (animationsEnabled) TabFadeDuration else 0,
+                            ) togetherWith materialFadeThroughOut(durationMillis = if (animationsEnabled) TabFadeDuration else 0)
                         },
                         label = "tabContent",
                     ) {
@@ -174,6 +188,31 @@ object HomeScreen : Screen() {
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
         val selected = tabNavigator.current::class == tab::class
+        // Honour Android's "Remove animations" accessibility preference.
+        val animationsEnabled = remember { ValueAnimator.areAnimatorsEnabled() }
+        val durationMillis = if (animationsEnabled) 180 else 0
+        val iconScale by animateFloatAsState(
+            targetValue = if (selected) 1.1f else 1f,
+            animationSpec = tween(durationMillis = durationMillis),
+            label = "neonTabIconScale",
+        )
+        val glowAlpha by animateFloatAsState(
+            targetValue = if (selected) 0.15f else 0f,
+            animationSpec = tween(durationMillis = durationMillis),
+            label = "neonTabHaloAlpha",
+        )
+        val iconTint by animateColorAsState(
+            targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            animationSpec = tween(durationMillis = durationMillis),
+            label = "neonTabIconTint",
+        )
+        val iconRes = when (tab) {
+            LibraryTab -> R.drawable.neon_tab_books
+            UpdatesTab -> R.drawable.neon_tab_bell
+            HistoryTab -> R.drawable.neon_tab_history
+            BrowseTab -> R.drawable.neon_tab_compass
+            else -> R.drawable.neon_tab_settings
+        }
         NavigationSuiteItem(
             navigationSuiteType = navigationSuiteType,
             selected = selected,
@@ -185,10 +224,27 @@ object HomeScreen : Screen() {
                 }
             },
             icon = {
-                Icon(
-                    painter = tab.options.icon!!,
-                    contentDescription = tab.options.title,
-                )
+                // Crisp Tabler vectors, tinted by the active Neon Cyber theme.
+                // The halo is a low-opacity Compose shape, not a costly blur.
+                Box(
+                    modifier = Modifier.size(32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha),
+                                shape = CircleShape,
+                            ),
+                    )
+                    Icon(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = tab.options.title,
+                        tint = iconTint,
+                        modifier = Modifier.size(24.dp).scale(iconScale),
+                    )
+                }
             },
             label = {
                 Text(
