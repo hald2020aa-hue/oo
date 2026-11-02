@@ -130,7 +130,8 @@ object HomeScreen : Screen() {
                             materialFadeThroughIn(
                                 initialScale = 0.97f,
                                 durationMillis = if (animationsEnabled) TabFadeDuration else 0,
-                            ) togetherWith materialFadeThroughOut(durationMillis = if (animationsEnabled) TabFadeDuration else 0)
+                            ) togetherWith
+                                materialFadeThroughOut(durationMillis = if (animationsEnabled) TabFadeDuration else 0)
                         },
                         label = "tabContent",
                     ) {
